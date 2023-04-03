@@ -248,7 +248,7 @@ export class ModelLoading{
             appleLogotxt.flipY=false;
             this.loadedModel.getObjectByName('appleLogo').material.map = appleLogotxt
             this.loadedModel.getObjectByName('appleLogo').material.metalness = 1
-            console.log(appleLogotxt)
+  
 
             
         })
