@@ -4,7 +4,8 @@ import * as dat from 'dat.gui';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {RGBELoader} from 'three/examples/jsm/loaders/RGBELoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
-
+import appleLogosrc from './appleLogoTXT.png';
+import Extra from './extra';
 
 import { LoaderManager } from './loader_template';
 
@@ -12,6 +13,7 @@ import { LoaderManager } from './loader_template';
 export class ModelLoading{
 
     constructor(scene,renderer,orbit,camera){
+        this.extra = new Extra();
         this.camera = camera;
         this.orbit = orbit;
         this.carWave;
@@ -19,8 +21,11 @@ export class ModelLoading{
         //this.dloader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
         //this.dloader.setDecoderConfig({type:'js'});
         this.shopOut = new URL('phones.glb',import.meta.url);
+        this.phoneLIst=['iphone13','iphone6s'];
+        this.actualPhone=0;
         this.loadedModel,this.modelAnimation;
         this.assetLoad = new GLTFLoader();
+        this.hdriSrc = 'studio3.hdr';
         //this.assetLoad.setDRACOLoader(this.dloader);
         this.loadingManager = new LoaderManager(this.assetLoad)
         this._loader;
@@ -59,6 +64,7 @@ export class ModelLoading{
         this.busClone;
         this.clonedMOdelArr=[];
         this.day=true;
+        this.setEventOnce = false;
     }
     findmaterial(elem){
         return elem.material.name == 'window3'
@@ -92,7 +98,7 @@ export class ModelLoading{
        // this.renderer.toneMapping = THREE.ReinhardToneMapping;
        // this.renderer.toneMappingExposure=1
         this.setHDRI();
-        this.renderer.setClearColor(0x000000, 0);
+        this.renderer.setClearColor(new THREE.Color('rgb(255,255,255)'), 0);
         this.scene.remove(this.light1);
         this.scene.remove(this.light1Helper);
         this.scene.remove(this.light2);
@@ -100,6 +106,8 @@ export class ModelLoading{
         this.scene.remove(this.ambilight);
         this.scene.remove(this.Hemislight);
         this.scene.remove(this.HemisLightHelp);
+
+       
     }
     setDayorNight(){
         if(this.day){this.nightParam();this.day=false;}
@@ -113,7 +121,8 @@ export class ModelLoading{
         this.Hemislight.position.set(24.95,29.45,-6.6);
         //this.light2.position.set(17.8,42.05,-10.85);
         this.camera.position.set(-9.8,29.83,-64.05);
-        this.orbit.target.y=20
+        this.orbit.target.y=-5
+        //this.orbit.enablePan=false
        
 
         this.dayParam();
@@ -122,16 +131,21 @@ export class ModelLoading{
         this._datgui();
     }
     nextInit(){
-        this.setEvent()
+       
+        this.setColorPanel(0)
         
 
        
     }
-
+    setColorPanel(index){
+        let stringg = this.extra.createColorSelect(this.extra.phoneList[index]);
+        //console.log(stringg)
+        this.setEvent(stringg)
+    }
     setHDRI(){
         
         this.renderer.outputEncoding = THREE.sRGBEncoding;
-        this.rgbLoad.load(new URL('studio.hdr',import.meta.url),(txt)=>{
+        this.rgbLoad.load(new URL(this.hdriSrc,import.meta.url),(txt)=>{
             txt.mapping = THREE.EquirectangularReflectionMapping; 
            // scene.background=txt;
            this.txt = txt
@@ -216,7 +230,9 @@ export class ModelLoading{
         if(this.animationStart)
         {
             //this.mixer.update(this.clock.getDelta());
-            this.loadedModel.rotation.y += 0.01;
+            for(let i =0; i< this.phoneLIst.length;i++){
+                this.loadedModel.getObjectByName(this.phoneLIst[i]).rotation.y += 0.01 ;
+            }
         }
     }
     loadAnimation(){
@@ -244,16 +260,78 @@ export class ModelLoading{
             this.animationStart=true;
             this.nextInit();
             //this.loadedModel.getObjectByName('appleLogo').material = new THREE.MeshToonMaterial({color:'red'})
-            const appleLogotxt = new THREE.TextureLoader().load('appleLogoTXT.png');
+            const appleLogotxt = new THREE.TextureLoader().load(appleLogosrc);
             appleLogotxt.flipY=false;
-            this.loadedModel.getObjectByName('appleLogo').material.map = appleLogotxt
-            this.loadedModel.getObjectByName('appleLogo').material.metalness = 1
+            //this.loadedModel.getObjectByName('appleLogo').material.map = appleLogotxt
+            //this.loadedModel.getObjectByName('appleLogo').material.metalness = 1
+            this.loadedModel.children[1].children[11].material.map = appleLogotxt
+            this.loadedModel.children[1].children[11].material.metalness = 1
+            this.loadedModel.children[0].children[13].material.map = appleLogotxt
+            this.loadedModel.children[0].children[13].material.metalness = 1
+            this.loadedModel.children[0].visible=false //13
+            this.loadedModel.children[1].position.set(0,0,0)  //13
+            this.loadedModel.children[0].position.set(0,0,0)  //6
+
+            console.log(this.loadedModel.getObjectByName('iphone6s').children[0].material.color)
+          
+            
   
 
             
         })
     }
-    setEvent(){
+    
+    callSwitchPhone(dir){
+        
+        this.actualPhone = this.extra.switchPhone(dir,this.actualPhone,this.phoneLIst);
+        
+
+        for(let i =0; i< this.phoneLIst.length;i++){
+            this.loadedModel.getObjectByName(this.phoneLIst[i]).visible=false ;
+        }
+        this.loadedModel.getObjectByName(this.phoneLIst[this.actualPhone]).visible=true; 
+        this.setphoneCount()
+        this.setColorPanel(this.actualPhone)
+    }
+    setEvent(elem){
+        if(this.setEventOnce==false){
+            document.querySelector('#arrowright').addEventListener('click',()=>{
+                this.callSwitchPhone('right');
+            })
+            document.querySelector('#arrowleft').addEventListener('click',()=>{
+                this.callSwitchPhone('left');
+            })
+            this.setEventOnce=true;
+        }
+       
+        for(let i =0; i<elem.length;i++){
+            
+            document.querySelector(elem[i].name).addEventListener('click',()=>{
+                this.setColor(this.loadedModel,elem[i].name,elem[i].csscolor,elem[i].threeCol);
+            })
+        }
+
+    }
+    setphoneCount(){
+        document.querySelector('#itemcount').innerHTML=(this.actualPhone+1)+' / '+this.phoneLIst.length;
+        
+    }
+    setColor(model,x,y,z){
+            if(this.actualPhone==0){
+                model.getObjectByName('iphone13').children[0].material.color = new THREE.Color(z)
+                model.getObjectByName('iphone13').children[4].material.color = new THREE.Color(z)
+                model.getObjectByName('iphone13').children[8].material.color = new THREE.Color(z)
+            }
+
+            else if(this.actualPhone==1){
+                 model.getObjectByName('iphone6s').children[0].material.color = new THREE.Color(z)
+                 //model.getObjectByName('iphone6s').children[6].material.color = new THREE.Color(z)
+                
+
+                
+            }
+
+        //model.getObjectByName('iphone13').material.metalness = 1
 
     }
 }
